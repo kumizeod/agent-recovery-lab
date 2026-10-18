@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-recovery-lab"
+version = "0.0.1.dev0"
+description = "A small, executable foundation for studying tool-agent recovery."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = []
+classifiers = ["Development Status :: 1 - Planning", "Programming Language :: Python :: 3"]
+
+[project.scripts]
+recovery-lab = "recovery_lab.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
