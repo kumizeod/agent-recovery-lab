@@ -9,7 +9,7 @@
 5. Agent 返回结构化 `Outcome`，异常则被记录为 failed。
 6. runner 获取深拷贝 snapshot，由独立 grader 评分。
 
-目前全部同步运行。工具异常状态使用 `ToolReply` 表达；非预期代码异常由 runner 保存，不会从实验记录中丢弃。
+默认 memory 后端同步运行。process 后端由子进程执行真实 CSV 去重，工具返回 running/failed/ok；通过 wait_job/read_job_logs 查询。工具异常状态使用 `ToolReply` 表达；非预期代码异常由 runner 保存，不会从实验记录中丢弃。
 
 ## Fault semantics
 
@@ -21,7 +21,7 @@
 
 同一幂等键映射到同一已完成作业；新 episode 清空映射。幂等检查在注入故障之前，重复查询已知 key 不触发新故障。此行为是显式服务契约，不是模型推理的保证。
 
-提交后立即完成并生成内存产物；没有 running/pending 状态。`publish_artifact` 特意不幂等，所以重复发布会留下多次副作用。
+memory 后端提交后立即完成；process 后端提交代表启动并注册 worker，不代表任务完成。注册立即一致，不模拟延迟提交。`publish_artifact` 特意不幂等，所以重复发布会留下多次副作用。
 
 ## Public vs privileged
 

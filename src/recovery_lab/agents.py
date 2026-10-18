@@ -1,6 +1,14 @@
 """Scripted controls, not LLMs and not learned recovery policies."""
 
-from recovery_lab.types import Outcome, TaskView, Tools
+from recovery_lab.types import Outcome, TaskView, ToolReply, Tools
+
+
+def _await_result(tools: Tools, reply: ToolReply) -> ToolReply:
+    for _ in range(4):
+        if reply.status != "running" or reply.job_id is None:
+            break
+        reply = tools.wait_job(reply.job_id, 1.0)
+    return reply
 
 
 def _finish(task: TaskView, tools: Tools, artifact_id: str | None) -> Outcome:
@@ -27,6 +35,7 @@ class BlindRetryAgent:
         reply = tools.submit_job()
         if reply.status == "timeout":
             reply = tools.submit_job()
+        reply = _await_result(tools, reply)
         return _finish(task, tools, reply.artifact_id if reply.status == "ok" else None)
 
 
@@ -40,6 +49,7 @@ class VerifyThenRetryAgent:
             reply = tools.get_job_status(request_key)
             if reply.status == "not_found":
                 reply = tools.submit_job(request_key)
+        reply = _await_result(tools, reply)
         return _finish(task, tools, reply.artifact_id if reply.status == "ok" else None)
 
 

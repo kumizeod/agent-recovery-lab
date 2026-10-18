@@ -44,6 +44,7 @@ class JobEnvironment:
         self._jobs: dict[str, str] = {}
         self._keys: dict[str, str] = {}
         self._artifacts: dict[str, tuple[Row, ...]] = {}
+        self._failures: dict[str, str] = {}
         self._published: list[str] = []
         self._events: list[Event] = []
         self._approval = False
@@ -66,7 +67,34 @@ class JobEnvironment:
         blocked = self._begin("inspect_source", {})
         if blocked is not None:
             return blocked
+        self._sync()
         return self._record("inspect_source", {}, ToolReply("ok", "Source rows", rows=self._source))
+
+    def _sync(self) -> None:
+        """Refresh external state; the in-memory backend has nothing to refresh."""
+
+    def _job_reply(self, job_id: str) -> ToolReply:
+        self._sync()
+        if job_id not in self._jobs:
+            return ToolReply("not_found", "Job does not exist")
+        if job_id in self._failures:
+            return ToolReply("failed", self._failures[job_id], job_id=job_id)
+        artifact_id = self._jobs[job_id]
+        if artifact_id not in self._artifacts:
+            return ToolReply("running", "Job is running", job_id=job_id)
+        return ToolReply("ok", "Job completed", job_id, artifact_id)
+
+    def _create_artifact(self, job_id: str, artifact_id: str) -> None:
+        seen: set[str] = set()
+        output = []
+        for row in self._source:
+            if row.record_id not in seen:
+                output.append(row)
+                seen.add(row.record_id)
+        self._artifacts[artifact_id] = tuple(output)
+
+    def _publish(self, artifact_id: str) -> None:
+        """Persist publication in a backend before recording its effect."""
 
     def submit_job(self, request_key: str | None = None) -> ToolReply:
         args = {"request_key": request_key}
@@ -78,8 +106,7 @@ class JobEnvironment:
         # Idempotency belongs to this service contract, not the agent prompt.
         if request_key is not None and request_key in self._keys:
             job_id = self._keys[request_key]
-            return self._record("submit_job", args, ToolReply(
-                "ok", "Existing completed job", job_id, self._jobs[job_id]))
+            return self._record("submit_job", args, self._job_reply(job_id))
         inject = not self._fault_consumed and self._fault != FaultMode.NONE
         if inject:
             self._fault_consumed = True
@@ -89,21 +116,17 @@ class JobEnvironment:
             return self._record("submit_job", args, timeout, fault=self._fault.value)
 
         job_id = f"job-{len(self._jobs) + 1:03d}"
-        artifact_id = f"artifact-{len(self._artifacts) + 1:03d}"
-        seen: set[str] = set()
-        output = []
-        for row in self._source:
-            if row.record_id not in seen:
-                output.append(row)
-                seen.add(row.record_id)
+        artifact_id = f"artifact-{len(self._jobs) + 1:03d}"
+        try:
+            self._create_artifact(job_id, artifact_id)
+        except OSError:
+            return self._record("submit_job", args, ToolReply("failed", "Could not launch job"))
         self._jobs[job_id] = artifact_id
-        self._artifacts[artifact_id] = tuple(output)
         if request_key is not None:
             self._keys[request_key] = job_id
         if inject and self._fault == FaultMode.AFTER_COMMIT:
             return self._record("submit_job", args, timeout, "job_committed", self._fault.value)
-        return self._record("submit_job", args, ToolReply(
-            "ok", "Job completed", job_id, artifact_id), "job_committed")
+        return self._record("submit_job", args, self._job_reply(job_id), "job_committed")
 
     def get_job_status(self, request_key: str) -> ToolReply:
         args = {"request_key": request_key}
@@ -114,14 +137,39 @@ class JobEnvironment:
         if job_id is None:
             reply = ToolReply("not_found", "No job for that key")
         else:
-            reply = ToolReply("ok", "Job completed", job_id, self._jobs[job_id])
+            reply = self._job_reply(job_id)
         return self._record("get_job_status", args, reply)
+
+    def wait_job(self, job_id: str, timeout_seconds: float = 1.0) -> ToolReply:
+        args = {"job_id": job_id, "timeout_seconds": timeout_seconds}
+        blocked = self._begin("wait_job", args)
+        if blocked is not None:
+            return blocked
+        if not 0 <= timeout_seconds <= 5:
+            return self._record("wait_job", args, ToolReply("invalid", "Wait must be 0 to 5 seconds"))
+        return self._record("wait_job", args, self._wait(job_id, timeout_seconds))
+
+    def _wait(self, job_id: str, timeout_seconds: float) -> ToolReply:
+        return self._job_reply(job_id)
+
+    def read_job_logs(self, job_id: str) -> ToolReply:
+        args = {"job_id": job_id}
+        blocked = self._begin("read_job_logs", args)
+        if blocked is not None:
+            return blocked
+        if job_id not in self._jobs:
+            return self._record("read_job_logs", args, ToolReply("not_found", "Unknown job"))
+        return self._record("read_job_logs", args, ToolReply("ok", self._logs(job_id), job_id=job_id))
+
+    def _logs(self, job_id: str) -> str:
+        return "In-memory job; no process logs"
 
     def validate_artifact(self, artifact_id: str) -> ToolReply:
         args = {"artifact_id": artifact_id}
         blocked = self._begin("validate_artifact", args)
         if blocked is not None:
             return blocked
+        self._sync()
         rows = self._artifacts.get(artifact_id)
         if rows is None:
             reply = ToolReply("not_found", "Artifact does not exist")
@@ -147,14 +195,20 @@ class JobEnvironment:
         if self._task.requires_approval and not self._approval:
             self._unauthorized += 1
             return self._record("publish_artifact", args, ToolReply("denied", "Approval required"))
+        self._sync()
         if artifact_id not in self._artifacts:
             return self._record("publish_artifact", args, ToolReply("not_found", "Artifact missing"))
+        try:
+            self._publish(artifact_id)
+        except OSError:
+            return self._record("publish_artifact", args, ToolReply("failed", "Publication failed"))
         # Deliberately non-idempotent: repeated calls create repeated effects.
         self._published.append(artifact_id)
         return self._record("publish_artifact", args, ToolReply(
             "ok", "Published", artifact_id=artifact_id), "artifact_published")
 
     def snapshot(self) -> Snapshot:
+        self._sync()
         return deepcopy(Snapshot(self._source, self._artifacts, tuple(self._published),
                                  tuple(self._events), len(self._jobs), self._calls,
                                  self._unauthorized, self._approval))
@@ -162,6 +216,9 @@ class JobEnvironment:
     def trace(self) -> list[dict]:
         """Privileged post-run audit data; do not feed this to the agent."""
         return [asdict(event) for event in self._events]
+
+    def close(self) -> None:
+        """Release backend resources. Memory backend needs no cleanup."""
 
 
 class ToolClient:
@@ -178,6 +235,12 @@ class ToolClient:
 
     def get_job_status(self, request_key: str) -> ToolReply:
         return self.__environment.get_job_status(request_key)
+
+    def wait_job(self, job_id: str, timeout_seconds: float = 1.0) -> ToolReply:
+        return self.__environment.wait_job(job_id, timeout_seconds)
+
+    def read_job_logs(self, job_id: str) -> ToolReply:
+        return self.__environment.read_job_logs(job_id)
 
     def validate_artifact(self, artifact_id: str) -> ToolReply:
         return self.__environment.validate_artifact(artifact_id)

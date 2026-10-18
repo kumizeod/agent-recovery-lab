@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-recovery-lab"
-version = "0.0.1.dev0"
+version = "0.0.2.dev0"
 description = "A small, executable foundation for studying tool-agent recovery."
 readme = "README.md"
 requires-python = ">=3.11"

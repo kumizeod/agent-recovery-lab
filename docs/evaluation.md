@@ -22,6 +22,8 @@
 
 当前服务没有修改 source 的工具；source_preserved 是未来扩展保护和评分负例，不是已经测量了任意写权限下的防篡改。
 
+process 后端额外检查复制的 source 文件字节是否变化，并读取实际 published CSV 后评分。作业清理先于评分，防止 runner 返回后仍有 worker 修改产物。输入原文件由 CLI 读取，worker 只接触 episode 复制件。
+
 ## Before model evaluation
 
 - 固定代码版本、模型/服务版本、生成参数、预算及工具说明。
