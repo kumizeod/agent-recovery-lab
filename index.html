@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soup Detector | 海龟汤侦探 — AI 驱动的情景推理解谜</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+
+  <header class="app-header">
+    <div class="brand" id="brandHomeBtn">
+      <div class="brand-icon">
+        <span class="iconify" data-icon="mdi:bowl-mix-outline"></span>
+      </div>
+      <div class="brand-text">
+        <h1>SOUP DETECTOR <span class="brand-badge">海龟汤侦探</span></h1>
+        <p>LATERAL THINKING MYSTERY ENGINE</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="status-pill" id="engineStatusPill">
+        <span class="status-dot builtin" id="engineStatusDot"></span>
+        <span id="engineStatusText">内置经典汤库 & AI 双引擎</span>
+      </div>
+      <button class="icon-btn" id="openHistoryBtn" type="button">
+        <span class="iconify" data-icon="mdi:history"></span>
+        <span>推理档案</span>
+      </button>
+      <button class="icon-btn" id="openApiModalBtn" type="button">
+        <span class="iconify" data-icon="mdi:cog-outline"></span>
+        <span>API 设置</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- LOBBY VIEW -->
+    <section class="view-section active" id="lobbyView">
+      <div class="hero-banner">
+        <h2 class="hero-title">探索逻辑的迷宫，还原故事的真相</h2>
+        <p class="hero-subtitle">
+          在气泡池中挑选 1–4 个你感兴趣的神秘关键词，由大语言模型实时生成独一无二的海龟汤谜题，或直接挑战精选经典汤底。
+        </p>
+      </div>
+
+      <div class="glass-card">
+        <div class="lobby-toolbar">
+          <div class="soup-type-group" id="soupTypeGroup">
+            <button class="soup-type-btn active" data-soup-type="clear" type="button">
+              <span class="iconify" data-icon="mdi:water-outline"></span> 清汤（逻辑推理）
+            </button>
+            <button class="soup-type-btn" data-soup-type="red" type="button">
+              <span class="iconify" data-icon="mdi:fire-alert"></span> 红汤（悬疑惊悚）
+            </button>
+            <button class="soup-type-btn" data-soup-type="black" type="button">
+              <span class="iconify" data-icon="mdi:weather-night"></span> 黑汤（人性反转）
+            </button>
+          </div>
+
+          <div class="selected-tags-bar">
+            <span>已选关键词 (<span id="selectedCount">0</span>/4)：</span>
+            <div id="selectedTagsList" style="display:inline-flex; gap:0.35rem; flex-wrap:wrap;"></div>
+          </div>
+        </div>
+
+        <div class="bubble-stage-wrapper">
+          <div id="bubbleContainer"></div>
+        </div>
+
+        <div class="lobby-footer">
+          <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+            <button class="secondary-btn" id="shuffleBubblesBtn" type="button">
+              <span class="iconify" data-icon="mdi:refresh"></span> 换一批关键词
+            </button>
+            <button class="secondary-btn" id="randomSelectBtn" type="button">
+              <span class="iconify" data-icon="mdi:dice-multiple-outline"></span> 随机抽选关键词
+            </button>
+          </div>
+
+          <button class="primary-btn" id="startMysteryBtn" type="button">
+            <span class="iconify" data-icon="mdi:sparkles"></span>
+            <span>生成汤面 · 开始推理</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- GAME VIEW -->
+    <section class="view-section" id="gameView">
+      <div class="game-layout">
+        <!-- Left Column: Soup Surface & Progress -->
+        <div class="glass-card soup-surface-card">
+          <div class="soup-meta">
+            <span class="brand-badge" id="activeSoupTypeBadge">清汤 · 逻辑迷宫</span>
+            <button class="secondary-btn" id="backToLobbyBtn" type="button" style="padding:0.32rem 0.7rem; font-size:0.76rem;">
+              <span class="iconify" data-icon="mdi:arrow-left"></span> 返回气泡池
+            </button>
+          </div>
+
+          <h3 class="soup-title" id="activeSoupTitle">加载中...</h3>
+          <div id="activeSoupTags" style="display:flex; gap:0.35rem; flex-wrap:wrap;"></div>
+
+          <div class="soup-story-box" id="activeSoupSurface">
+            正在调制海龟汤底，请稍候...
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value" id="statQuestions">0</div>
+              <div class="stat-label">提问次数</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="statProgress">0%</div>
+              <div class="stat-label">真相还原度</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="statHints">0</div>
+              <div class="stat-label">已用提示</div>
+            </div>
+          </div>
+
+          <div class="clues-box" id="cluesContainer">
+            <div class="clues-title">
+              <span class="iconify" data-icon="mdi:lightbulb-on-outline"></span> 关键线索记录
+            </div>
+            <div id="cluesList" style="display:flex; flex-direction:column; gap:0.4rem;">
+              <div style="font-size:0.78rem; color:var(--text-muted);">暂无线索，点击下方「获取提示」或通过「是」的回答解锁。</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="secondary-btn" id="requestHintBtn" type="button" style="flex:1; justify-content:center;">
+              <span class="iconify" data-icon="mdi:key-Chain"></span> 获取提示
+            </button>
+            <button class="secondary-btn" id="revealTruthBtn" type="button" style="flex:1; justify-content:center;">
+              <span class="iconify" data-icon="mdi:eye-outline"></span> 直接看汤底
+            </button>
+          </div>
+
+          <div class="truth-reveal-box" id="truthRevealBox">
+            <h4 style="color:var(--c-yes); margin-bottom:0.45rem; display:flex; align-items:center; gap:0.4rem;">
+              <span class="iconify" data-icon="mdi:check-decagram"></span> 完整汤底（真相还原）
+            </h4>
+            <p id="truthRevealText" style="font-size:0.9rem; line-height:1.75; color:#e2e8f0;"></p>
+          </div>
+        </div>
+
+        <!-- Right Column: Interactive Q&A Log -->
+        <div class="glass-card chat-panel">
+          <div class="chat-header">
+            <span style="font-size:0.88rem; font-weight:600; display:flex; align-items:center; gap:0.4rem;">
+              <span class="iconify" data-icon="mdi:comment-question-outline" style="color:var(--primary);"></span>
+              审讯与推理记录
+            </span>
+            <div class="badge-legend">
+              <span class="verdict-badge verdict-YES">是</span>
+              <span class="verdict-badge verdict-NO">否</span>
+              <span class="verdict-badge verdict-IRR">无关</span>
+              <span class="verdict-badge verdict-AMB">部分/不明确</span>
+            </div>
+          </div>
+
+          <div class="chat-log" id="chatLog"></div>
+
+          <div class="quick-questions" id="quickQuestionsBar">
+            <button class="quick-q-btn" data-q="有人因此死亡或受伤吗？" type="button">有人死亡或受伤吗？</button>
+            <button class="quick-q-btn" data-q="故事中存在第三个人吗？" type="button">存在第三个人吗？</button>
+            <button class="quick-q-btn" data-q="这件事是故意策划的吗？" type="button">是故意策划的吗？</button>
+            <button class="quick-q-btn" data-q="主角的职业或身份特殊吗？" type="button">主角身份特殊吗？</button>
+            <button class="quick-q-btn" data-q="发生地点是在室内吗？" type="button">地点是在室内吗？</button>
+          </div>
+
+          <div class="input-dock">
+            <div class="mode-switch-bar">
+              <div class="mode-tabs">
+                <button class="mode-tab active ask" id="modeAskTab" type="button">
+                  <span class="iconify" data-icon="mdi:help-circle-outline"></span> 提问模式（是/否/无关）
+                </button>
+                <button class="mode-tab guess" id="modeGuessTab" type="button">
+                  <span class="iconify" data-icon="mdi:magnify-scan"></span> 猜谜模式（还原真相）
+                </button>
+              </div>
+              <span id="modeHelperText" style="font-size:0.75rem; color:var(--text-muted);">主持人仅以「是 / 否 / 无关」回答</span>
+            </div>
+
+            <form class="input-row" id="deductionForm">
+              <input
+                type="text"
+                id="userInput"
+                class="chat-input"
+                placeholder="输入你的是非提问，例如：他是自愿喝下这碗汤的吗？"
+                autocomplete="off"
+              />
+              <button type="submit" class="send-btn" id="submitActionBtn">
+                <span class="iconify" data-icon="mdi:send"></span>
+                <span id="submitBtnText">提问</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- API Settings Modal -->
+  <div class="modal-overlay" id="apiModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>
+          <span class="iconify" data-icon="mdi:api" style="color:var(--primary);"></span>
+          LLM 引擎与 API 配置
+        </h3>
+        <button class="icon-btn" id="closeApiModalBtn" type="button" style="padding:0.3rem 0.55rem;">✕</button>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-muted); line-height:1.5;">
+        支持接入任何兼容 OpenAI 格式的接口（如 DeepSeek、OpenAI、SiliconFlow、LM Studio）。若未填写 API Key，系统将自动使用内置离线裁判与经典海龟汤题库。
+      </p>
+
+      <div class="preset-row">
+        <button class="preset-chip" data-base="https://api.deepseek.com/v1" data-story="deepseek-reasoner" data-judge="deepseek-chat" type="button">DeepSeek 官方</button>
+        <button class="preset-chip" data-base="https://api.openai.com/v1" data-story="gpt-4o" data-judge="gpt-4o-mini" type="button">OpenAI 官方</button>
+        <button class="preset-chip" data-base="https://api.siliconflow.cn/v1" data-story="deepseek-ai/DeepSeek-R1" data-judge="deepseek-ai/DeepSeek-V3" type="button">SiliconFlow</button>
+      </div>
+
+      <div class="form-group">
+        <label for="apiBaseUrlInput">API Base URL</label>
+        <input type="text" id="apiBaseUrlInput" class="form-input" placeholder="https://api.deepseek.com/v1" />
+      </div>
+
+      <div class="form-group">
+        <label for="apiKeyInput">API Key（仅保存在本地浏览器）</label>
+        <input type="password" id="apiKeyInput" class="form-input" placeholder="sk-..." />
+      </div>
+
+      <div class="form-group">
+        <label for="storyModelInput">故事生成模型 (Reasoning / Story Model)</label>
+        <input type="text" id="storyModelInput" class="form-input" placeholder="deepseek-chat" />
+      </div>
+
+      <div class="form-group">
+        <label for="judgeModelInput">裁判问答模型 (Judge / Chat Model)</label>
+        <input type="text" id="judgeModelInput" class="form-input" placeholder="deepseek-chat" />
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:0.4rem;">
+        <button class="secondary-btn" id="clearApiConfigBtn" type="button">切换仅离线题库</button>
+        <button class="primary-btn" id="saveApiConfigBtn" type="button" style="padding:0.6rem 1.3rem;">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div class="modal-overlay" id="historyModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>
+          <span class="iconify" data-icon="mdi:notebook-check-outline" style="color:var(--primary);"></span>
+          本地推理档案
+        </h3>
+        <button class="icon-btn" id="closeHistoryModalBtn" type="button" style="padding:0.3rem 0.55rem;">✕</button>
+      </div>
+      <div id="historyListContainer" style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:0.6rem;"></div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
