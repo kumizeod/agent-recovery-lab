@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Soup Detector | 海龟汤侦探 — AI 驱动的情景推理解谜</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap"
+    rel="stylesheet">
   <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+
+<body data-soup-theme="clear">
   <canvas id="confetti"></canvas>
 
   <header class="app-header">
@@ -29,11 +33,11 @@
         <span class="status-dot builtin" id="engineStatusDot"></span>
         <span id="engineStatusText">内置经典汤库 & AI 双引擎</span>
       </div>
-      <button class="icon-btn" id="openHistoryBtn" type="button">
+      <button class="icon-btn" id="openHistoryBtn" type="button" aria-label="推理档案">
         <span class="iconify" data-icon="mdi:history"></span>
         <span>推理档案</span>
       </button>
-      <button class="icon-btn" id="openApiModalBtn" type="button">
+      <button class="icon-btn" id="openApiModalBtn" type="button" aria-label="API 设置">
         <span class="iconify" data-icon="mdi:cog-outline"></span>
         <span>API 设置</span>
       </button>
@@ -44,49 +48,99 @@
     <!-- LOBBY VIEW -->
     <section class="view-section active" id="lobbyView">
       <div class="hero-banner">
-        <h2 class="hero-title">探索逻辑的迷宫，还原故事的真相</h2>
+        <div class="hero-eyebrow"><span></span> CHOOSE YOUR MYSTERY <span></span></div>
+        <h2 class="hero-title">每一种真相，都有它的颜色</h2>
         <p class="hero-subtitle">
-          在气泡池中挑选 1–4 个你感兴趣的神秘关键词，由大语言模型实时生成独一无二的海龟汤谜题，或直接挑战精选经典汤底。
+          选择一碗汤，走进故事背面。用提问拨开迷雾，在逻辑、惊悚与诡异之间，找到唯一的真相。
         </p>
       </div>
 
-      <div class="glass-card">
-        <div class="lobby-toolbar">
-          <div class="soup-type-group" id="soupTypeGroup">
-            <button class="soup-type-btn active" data-soup-type="clear" type="button">
-              <span class="iconify" data-icon="mdi:water-outline"></span> 清汤（逻辑推理）
-            </button>
-            <button class="soup-type-btn" data-soup-type="red" type="button">
-              <span class="iconify" data-icon="mdi:fire-alert"></span> 红汤（悬疑惊悚）
-            </button>
-            <button class="soup-type-btn" data-soup-type="black" type="button">
-              <span class="iconify" data-icon="mdi:weather-night"></span> 黑汤（人性反转）
-            </button>
+      <div class="glass-card lobby-card">
+        <div class="lobby-heading">
+          <div>
+            <span class="section-kicker">CASE ARCHIVE</span>
+            <h3>今夜，你想解开哪一种谜？</h3>
           </div>
-
-          <div class="selected-tags-bar">
-            <span>已选关键词 (<span id="selectedCount">0</span>/4)：</span>
-            <div id="selectedTagsList" style="display:inline-flex; gap:0.35rem; flex-wrap:wrap;"></div>
-          </div>
+          <span class="lobby-step">01 / 选择汤底</span>
         </div>
 
-        <div class="bubble-stage-wrapper">
-          <div id="bubbleContainer"></div>
+        <div class="soup-type-group" id="soupTypeGroup" role="group" aria-label="选择汤底风格">
+          <button class="soup-type-btn soup-choice active" data-soup-type="clear" type="button" aria-pressed="true">
+            <span class="choice-visual">
+              <img src="assets/sherlock-holmes.png" alt="福尔摩斯与华生的经典插画" class="choice-image sherlock-image" />
+              <span class="choice-shade"></span>
+              <span class="choice-number">CASE 01 · DEDUCTION</span>
+              <span class="choice-selected"><span class="iconify" data-icon="mdi:check"></span> 已选择</span>
+              <span class="choice-quote">“当你排除所有不可能，<br />剩下的就是真相。”</span>
+            </span>
+            <span class="choice-content">
+              <span class="choice-heading">
+                <span class="choice-title">清汤</span>
+                <span class="choice-subtitle">逻辑推理</span>
+              </span>
+              <span class="choice-description">剥去不可能的表象，让严谨的演绎带你抵达唯一的真相。</span>
+              <span class="choice-footer">
+                <span class="choice-tags">演绎法 · 本格推理</span>
+                <span class="choice-arrow"><span class="iconify" data-icon="mdi:arrow-top-right"></span></span>
+              </span>
+            </span>
+          </button>
+
+          <button class="soup-type-btn soup-choice" data-soup-type="red" type="button" aria-pressed="false">
+            <span class="choice-visual">
+              <img src="assets/mr-krabs.png" alt="张大嘴巴的蟹老板" class="choice-image krabs-image" />
+              <span class="choice-shade"></span>
+              <span class="choice-number">CASE 02 · SUSPENSE</span>
+              <span class="choice-selected"><span class="iconify" data-icon="mdi:check"></span> 已选择</span>
+              <span class="choice-quote">“无聊，<br />我要看血流成河。”</span>
+            </span>
+            <span class="choice-content">
+              <span class="choice-heading">
+                <span class="choice-title">红汤</span>
+                <span class="choice-subtitle">悬疑惊悚</span>
+              </span>
+              <span class="choice-description">平静表象之下暗流涌动，每个细节都可能沾染危险。</span>
+              <span class="choice-footer">
+                <span class="choice-tags">高能反转 · 心跳加速</span>
+                <span class="choice-arrow"><span class="iconify" data-icon="mdi:arrow-top-right"></span></span>
+              </span>
+            </span>
+          </button>
+
+          <button class="soup-type-btn soup-choice" data-soup-type="black" type="button" aria-pressed="false">
+            <span class="choice-visual">
+              <img src="assets/dark-witch.svg" alt="捧着魔法球的黑暗女巫卡通插画" class="choice-image witch-image" />
+              <span class="choice-shade"></span>
+              <span class="choice-number">CASE 03 · UNCANNY</span>
+              <span class="choice-selected"><span class="iconify" data-icon="mdi:check"></span> 已选择</span>
+              <span class="choice-quote">“真相，<br />从不遵守常识。”</span>
+            </span>
+            <span class="choice-content">
+              <span class="choice-heading">
+                <span class="choice-title">黑汤</span>
+                <span class="choice-subtitle">诡异反常识</span>
+              </span>
+              <span class="choice-description">当熟悉的规则悄然失效，最离奇的假设反而接近答案。</span>
+              <span class="choice-footer">
+                <span class="choice-tags">规则怪谈 · 认知颠覆</span>
+                <span class="choice-arrow"><span class="iconify" data-icon="mdi:arrow-top-right"></span></span>
+              </span>
+            </span>
+          </button>
         </div>
 
         <div class="lobby-footer">
-          <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
-            <button class="secondary-btn" id="shuffleBubblesBtn" type="button">
-              <span class="iconify" data-icon="mdi:refresh"></span> 换一批关键词
-            </button>
-            <button class="secondary-btn" id="randomSelectBtn" type="button">
-              <span class="iconify" data-icon="mdi:dice-multiple-outline"></span> 随机抽选关键词
-            </button>
+          <div class="current-selection">
+            <span class="selection-dot"></span>
+            <div>
+              <span class="selection-label">当前汤底</span>
+              <strong id="selectedSoupName">清汤 · 逻辑推理</strong>
+            </div>
           </div>
-
           <button class="primary-btn" id="startMysteryBtn" type="button">
             <span class="iconify" data-icon="mdi:sparkles"></span>
-            <span>生成汤面 · 开始推理</span>
+            <span id="startBtnText">以清汤开始推理</span>
+            <span class="iconify" data-icon="mdi:arrow-right"></span>
           </button>
         </div>
       </div>
@@ -99,8 +153,9 @@
         <div class="glass-card soup-surface-card">
           <div class="soup-meta">
             <span class="brand-badge" id="activeSoupTypeBadge">清汤 · 逻辑迷宫</span>
-            <button class="secondary-btn" id="backToLobbyBtn" type="button" style="padding:0.32rem 0.7rem; font-size:0.76rem;">
-              <span class="iconify" data-icon="mdi:arrow-left"></span> 返回气泡池
+            <button class="secondary-btn" id="backToLobbyBtn" type="button"
+              style="padding:0.32rem 0.7rem; font-size:0.76rem;">
+              <span class="iconify" data-icon="mdi:arrow-left"></span> 返回选汤
             </button>
           </div>
 
@@ -191,13 +246,8 @@
             </div>
 
             <form class="input-row" id="deductionForm">
-              <input
-                type="text"
-                id="userInput"
-                class="chat-input"
-                placeholder="输入你的是非提问，例如：他是自愿喝下这碗汤的吗？"
-                autocomplete="off"
-              />
+              <input type="text" id="userInput" class="chat-input" placeholder="输入你的是非提问，例如：他是自愿喝下这碗汤的吗？"
+                autocomplete="off" />
               <button type="submit" class="send-btn" id="submitActionBtn">
                 <span class="iconify" data-icon="mdi:send"></span>
                 <span id="submitBtnText">提问</span>
@@ -224,9 +274,12 @@
       </p>
 
       <div class="preset-row">
-        <button class="preset-chip" data-base="https://api.deepseek.com/v1" data-story="deepseek-reasoner" data-judge="deepseek-chat" type="button">DeepSeek 官方</button>
-        <button class="preset-chip" data-base="https://api.openai.com/v1" data-story="gpt-4o" data-judge="gpt-4o-mini" type="button">OpenAI 官方</button>
-        <button class="preset-chip" data-base="https://api.siliconflow.cn/v1" data-story="deepseek-ai/DeepSeek-R1" data-judge="deepseek-ai/DeepSeek-V3" type="button">SiliconFlow</button>
+        <button class="preset-chip" data-base="https://api.deepseek.com/v1" data-story="deepseek-reasoner"
+          data-judge="deepseek-chat" type="button">DeepSeek 官方</button>
+        <button class="preset-chip" data-base="https://api.openai.com/v1" data-story="gpt-4o" data-judge="gpt-4o-mini"
+          type="button">OpenAI 官方</button>
+        <button class="preset-chip" data-base="https://api.siliconflow.cn/v1" data-story="deepseek-ai/DeepSeek-R1"
+          data-judge="deepseek-ai/DeepSeek-V3" type="button">SiliconFlow</button>
       </div>
 
       <div class="form-group">
@@ -266,7 +319,8 @@
         </h3>
         <button class="icon-btn" id="closeHistoryModalBtn" type="button" style="padding:0.3rem 0.55rem;">✕</button>
       </div>
-      <div id="historyListContainer" style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:0.6rem;"></div>
+      <div id="historyListContainer"
+        style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:0.6rem;"></div>
     </div>
   </div>
 
@@ -274,4 +328,5 @@
 
   <script src="js/app.js"></script>
 </body>
+
 </html>

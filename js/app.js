@@ -1,4 +1,4 @@
-// Keyword Pool for Bubble Physics Engine
+// Keyword Pool for LLM Story Generation
     const KEYWORD_POOL = [
       '午夜电梯', '海龟汤', '双胞胎', '盲人琴师', '密室录音', '末班地铁',
       '无人孤岛', '记忆橡皮', '半根火柴', '雪山木屋', '倒立时钟', '婚礼合照',
@@ -73,8 +73,6 @@
     const state = {
       soupType: 'clear',
       selectedTags: [],
-      bubbles: [],
-      animFrameId: null,
       currentSoup: null,
       mode: 'ask', // 'ask' | 'guess'
       questionCount: 0,
@@ -151,178 +149,18 @@
       }
     }
 
-    // Bubble Physics Engine (Center attraction + Repulsion + Damping + Smooth Radius)
-    function initBubbleEngine() {
-      if (state.animFrameId) {
-        cancelAnimationFrame(state.animFrameId);
-      }
-      const container = document.getElementById('bubbleContainer');
-      container.innerHTML = '';
-      const rect = container.getBoundingClientRect();
-      const W = rect.width || 800;
-      const H = rect.height || 390;
-
-      const shuffled = [...KEYWORD_POOL].sort(() => Math.random() - 0.5).slice(0, 16);
-      state.bubbles = shuffled.map((word, idx) => {
-        const baseR = 40 + (word.length * 3.5);
-        const angle = (idx / shuffled.length) * Math.PI * 2;
-        const dist = 60 + Math.random() * 110;
-        const isSelected = state.selectedTags.includes(word);
-        const el = document.createElement('div');
-        el.className = 'bubble-node' + (isSelected ? ' selected' : '');
-        el.textContent = word;
-
-        const node = {
-          word,
-          el,
-          x: W / 2 + Math.cos(angle) * dist,
-          y: H / 2 + Math.sin(angle) * dist,
-          vx: (Math.random() - 0.5) * 1.5,
-          vy: (Math.random() - 0.5) * 1.5,
-          baseRadius: baseR,
-          radius: isSelected ? baseR * 1.3 : baseR,
-          targetRadius: isSelected ? baseR * 1.3 : baseR,
-          hovered: false,
-          selected: isSelected
-        };
-
-        el.addEventListener('mouseenter', () => { node.hovered = true; });
-        el.addEventListener('mouseleave', () => { node.hovered = false; });
-        el.addEventListener('click', () => toggleTagSelection(node));
-
-        container.appendChild(el);
-        return node;
-      });
-
-      const kCenter = 0.005;
-      const kColl = 0.3;
-      const damping = 0.92;
-      const maxV = 2.5;
-
-      function stepPhysics() {
-        const cRect = container.getBoundingClientRect();
-        const cw = cRect.width || W;
-        const ch = cRect.height || H;
-        const cx = cw / 2;
-        const cy = ch / 2;
-
-        for (let i = 0; i < state.bubbles.length; i++) {
-          const a = state.bubbles[i];
-          a.radius += (a.targetRadius - a.radius) * 0.1;
-
-          if (a.hovered) {
-            a.vx = 0;
-            a.vy = 0;
-          } else {
-            // Pull toward center
-            a.vx += (cx - a.x) * kCenter;
-            a.vy += (cy - a.y) * kCenter;
-
-            // Pairwise collision repulsion
-            for (let j = 0; j < state.bubbles.length; j++) {
-              if (i === j) continue;
-              const b = state.bubbles[j];
-              const dx = a.x - b.x;
-              const dy = a.y - b.y;
-              const dist = Math.hypot(dx, dy) || 1;
-              const minDist = a.radius + b.radius + 6;
-              if (dist < minDist) {
-                const force = (minDist - dist) * kColl / dist;
-                a.vx += dx * force * 0.5;
-                a.vy += dy * force * 0.5;
-              }
-            }
-
-            a.vx *= damping;
-            a.vy *= damping;
-
-            const speed = Math.hypot(a.vx, a.vy);
-            if (speed > maxV) {
-              a.vx = (a.vx / speed) * maxV;
-              a.vy = (a.vy / speed) * maxV;
-            }
-
-            a.x += a.vx;
-            a.y += a.vy;
-
-            // Boundary constraint
-            const pad = a.radius + 6;
-            if (a.x < pad) { a.x = pad; a.vx *= -0.6; }
-            if (a.x > cw - pad) { a.x = cw - pad; a.vx *= -0.6; }
-            if (a.y < pad) { a.y = pad; a.vy *= -0.6; }
-            if (a.y > ch - pad) { a.y = ch - pad; a.vy *= -0.6; }
-          }
-
-          const d = a.radius * 2;
-          a.el.style.width = `${d}px`;
-          a.el.style.height = `${d}px`;
-          a.el.style.transform = `translate3d(${a.x - a.radius}px, ${a.y - a.radius}px, 0)`;
-        }
-
-        state.animFrameId = requestAnimationFrame(stepPhysics);
-      }
-
-      state.animFrameId = requestAnimationFrame(stepPhysics);
-    }
-
-    function toggleTagSelection(node) {
-      const idx = state.selectedTags.indexOf(node.word);
-      if (idx >= 0) {
-        state.selectedTags.splice(idx, 1);
-        node.selected = false;
-        node.targetRadius = node.baseRadius;
-        node.el.classList.remove('selected');
-      } else {
-        if (state.selectedTags.length >= 4) {
-          showToast('最多可同时选择 4 个关键词气泡');
-          return;
-        }
-        state.selectedTags.push(node.word);
-        node.selected = true;
-        node.targetRadius = node.baseRadius * 1.3;
-        node.el.classList.add('selected');
-      }
-      renderSelectedTagsBar();
-    }
-
-    function renderSelectedTagsBar() {
-      document.getElementById('selectedCount').textContent = state.selectedTags.length;
-      const listEl = document.getElementById('selectedTagsList');
-      listEl.innerHTML = '';
-      state.selectedTags.forEach(tag => {
-        const chip = document.createElement('span');
-        chip.className = 'tag-chip';
-        chip.innerHTML = `${tag} <span>✕</span>`;
-        chip.addEventListener('click', () => {
-          state.selectedTags = state.selectedTags.filter(t => t !== tag);
-          const matchingNode = state.bubbles.find(b => b.word === tag);
-          if (matchingNode) {
-            matchingNode.selected = false;
-            matchingNode.targetRadius = matchingNode.baseRadius;
-            matchingNode.el.classList.remove('selected');
-          }
-          renderSelectedTagsBar();
-        });
-        listEl.appendChild(chip);
-      });
-    }
-
     // LLM Story Generation or Built-in Selection
     async function startNewMystery() {
       const startBtn = document.getElementById('startMysteryBtn');
       startBtn.disabled = true;
 
-      if (state.selectedTags.length === 0) {
-        // Pick 2 random tags if none chosen
-        const randoms = [...state.bubbles].sort(() => Math.random() - 0.5).slice(0, 2);
-        randoms.forEach(n => toggleTagSelection(n));
-      }
-
+      state.selectedTags = [];
       switchView('gameView');
       resetGamePanelState();
 
       if (state.apiConfig.apiKey && state.apiConfig.apiKey.trim().length > 5) {
         try {
+          state.selectedTags = [...KEYWORD_POOL].sort(() => Math.random() - 0.5).slice(0, 3);
           const generated = await generateSoupWithLLM(state.selectedTags, state.soupType);
           state.currentSoup = generated;
           populateSoupUI(generated);
@@ -336,10 +174,7 @@
 
       // Fallback or offline selection matching soupType
       const matching = BUILTIN_SOUPS.find(s => s.type === state.soupType) || BUILTIN_SOUPS[0];
-      state.currentSoup = {
-        ...matching,
-        tags: state.selectedTags.length ? [...state.selectedTags] : matching.tags
-      };
+      state.currentSoup = { ...matching };
       populateSoupUI(state.currentSoup);
       appendHostMessage('GREETING', '已加载经典海龟汤谜题！请在下方的输入框中向主持人提问，或切换到「猜谜模式」还原真相。');
       startBtn.disabled = false;
@@ -349,7 +184,7 @@
       const styleMap = {
         clear: '清汤（注重严密逻辑推理、无血腥恐怖）',
         red: '红汤（悬疑惊悚、带有一点案件或生死反转）',
-        black: '黑汤（深刻人性抉择、出人意料的黑暗反转）'
+        black: '黑汤（诡异反常识、规则失效、出人意料的认知反转）'
       };
       const prompt = `你是一位顶级的海龟汤（情境推理游戏）创作者。请根据以下关键词创作一个逻辑严密、反转精彩的海龟汤谜题：
 关键词：${tags.join('、')}
@@ -411,7 +246,7 @@
       const badgeMap = {
         clear: '清汤 · 逻辑推理',
         red: '红汤 · 悬疑惊悚',
-        black: '黑汤 · 人性反转'
+        black: '黑汤 · 诡异反常识'
       };
       document.getElementById('activeSoupTypeBadge').textContent = badgeMap[soup.type] || '经典海龟汤';
       document.getElementById('activeSoupTitle').textContent = soup.title;
@@ -643,9 +478,6 @@
     function switchView(viewId) {
       document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
       document.getElementById(viewId).classList.add('active');
-      if (viewId === 'lobbyView') {
-        setTimeout(() => initBubbleEngine(), 60);
-      }
     }
 
     function setDeductionMode(mode) {
@@ -700,41 +532,31 @@
     // Event Wiring
     window.addEventListener('DOMContentLoaded', () => {
       loadSavedData();
-      initBubbleEngine();
-
-      window.addEventListener('resize', () => {
-        if (document.getElementById('lobbyView').classList.contains('active')) {
-          initBubbleEngine();
-        }
-      });
 
       document.getElementById('brandHomeBtn').addEventListener('click', () => switchView('lobbyView'));
       document.getElementById('backToLobbyBtn').addEventListener('click', () => switchView('lobbyView'));
 
       // Soup Type Selector
+      const soupTypeNames = {
+        clear: '清汤 · 逻辑推理',
+        red: '红汤 · 悬疑惊悚',
+        black: '黑汤 · 诡异反常识'
+      };
+      const soupShortNames = { clear: '清汤', red: '红汤', black: '黑汤' };
+
       document.querySelectorAll('.soup-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.soup-type-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.soup-type-btn').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-pressed', 'false');
+          });
           btn.classList.add('active');
+          btn.setAttribute('aria-pressed', 'true');
           state.soupType = btn.getAttribute('data-soup-type');
+          document.body.dataset.soupTheme = state.soupType;
+          document.getElementById('selectedSoupName').textContent = soupTypeNames[state.soupType];
+          document.getElementById('startBtnText').textContent = `以${soupShortNames[state.soupType]}开始推理`;
         });
-      });
-
-      document.getElementById('shuffleBubblesBtn').addEventListener('click', () => {
-        state.selectedTags = [];
-        renderSelectedTagsBar();
-        initBubbleEngine();
-      });
-
-      document.getElementById('randomSelectBtn').addEventListener('click', () => {
-        state.selectedTags = [];
-        state.bubbles.forEach(b => {
-          b.selected = false;
-          b.targetRadius = b.baseRadius;
-          b.el.classList.remove('selected');
-        });
-        const picks = [...state.bubbles].sort(() => Math.random() - 0.5).slice(0, 3);
-        picks.forEach(p => toggleTagSelection(p));
       });
 
       document.getElementById('startMysteryBtn').addEventListener('click', startNewMystery);
